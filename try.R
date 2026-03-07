@@ -7,6 +7,10 @@ library(ggpmisc)
 library(ggrepel)
 library(ggtext)
 
+
+
+
+
 #fammi un ggplot con palmer penguins
 ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm, color = species)) +
   geom_point() +
