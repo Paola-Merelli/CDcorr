@@ -37,7 +37,7 @@ plot(C_map)
 
 terra::writeRaster(
   C_map,
-  "03.Data/AGB_merged.tif",
+  "03.Data/AGB_merged_YEAR.tif",
   overwrite = TRUE,
   gdal = c("COMPRESS=DEFLATE", "TILED=YES", "BLOCKXSIZE=512", "BLOCKYSIZE=512")
 )
@@ -46,8 +46,74 @@ terra::writeRaster(
 rm(vrt_file)
 gc()
 
+#repeat across all years untill you have the saved mosaic raster of each year then upload it as a multilayer spatraster eg agb
 
-#C_map <- terra::rast("03.Data/AGB_merged.tif")
+############# temporal quantile
+
+agb_p90_years <- quantile(
+  agb,
+  probs = 0.90,
+  na.rm = TRUE,
+  filename = "agb_p90_years.tif",
+  overwrite = TRUE
+)
+
+names(agb_p90_time) <- "agb_p90_time"
+
+############## mask for forest ##################
+
+##########spatial quantile
+
+# Create one unique ID per Sabatini pixel
+zone_r <- rast(div)
+values(zone_r) <- seq_len(ncell(zone_r))
+names(zone_r) <- "zone_id"
+
+zone_poly <- as.polygons(zone_r, na.rm = FALSE)
+zone_poly <- st_as_sf(zone_poly)
+
+p90_df <- exact_extract(
+  agb_p90_time,
+  zone_poly,
+  fun = "quantile",
+  quantiles = 0.90,
+  force_df = TRUE,
+  progress = TRUE
+)
+
+# Add extracted values back to the polygons
+zone_poly$agb_p90_final <- p90_df[[1]]
+
+# Rasterize back to the Sabatini grid
+agb_p90_final <- rasterize(
+  vect(zone_poly),
+  div,
+  field = "agb_p90_ts",
+  filename = "agb_p90_temporal_spatial.tif",
+  overwrite = TRUE
+)
+
+names(agb_p90_final) <- "agb_p90_final"
+
+
+
+
+############## sensitivity analysis doing it with different % and with the mean
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#C_map <- terra::rast("03.Data/AGB_final.tif")
 res(AD_1ha)
 res(C_map)
 plot(AD_1ha)
