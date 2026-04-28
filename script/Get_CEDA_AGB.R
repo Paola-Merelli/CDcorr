@@ -1,0 +1,15 @@
+#from Rstudio terminal
+# cd in C-B project
+
+cd 03.Data/
+  wget -e robots=off --mirror --no-parent -r \
+  https://dap.ceda.ac.uk/neodc/esacci/biomass/data/agb/maps/v6.0/geotiff/2017/
+    
+    #with this i got 18 files missing. chat gpt suggests
+    cd 03.Data/
+    
+    wget -e robots=off --mirror --no-parent -r -c \
+    --tries=0 --retry-connrefused --waitretry=1 \
+    --read-timeout=30 --timeout=30 \
+    -o wget_2017_agb.log \
+    https://dap.ceda.ac.uk/neodc/esacci/biomass/data/agb/maps/v6.0/geotiff/2017/
