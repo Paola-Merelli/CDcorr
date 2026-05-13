@@ -26,11 +26,15 @@ eco_for_df <- A_eco |>
   arrange(desc(forest_perc))
 
 
-eco_filt_10perc <- eco_for_df |>
+eco_filt_pc <- eco_for_df |>
   filter(forest_perc >= 10)
+#380
 
-eco_filt_1000ha <- eco_for_df |>
-  filter(forest_ha >= 1000)
+eco_filt_ha <- eco_for_df |>
+  filter(forest_ha >= 100000)
+#472
 
-
+eco_filt_pc_ha <- eco_for_df |>
+  filter(forest_ha >= 100000 & forest_perc >= 10)
+#355
 
