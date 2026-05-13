@@ -57,6 +57,9 @@ saveRDS(df_for, "03.Data/out/df_for.RDS")
 
 #df_for <- readRDS("03.Data/out/df_for.RDS")
 
+#filter df_for  keeping only filtered ecoregions
+df_for_filt <- df_for |> 
+  filter(ECO_NAME %in% eco_filt_pc$ECO_NAME)
 
 dim(df_for)
 #1711559
@@ -64,7 +67,7 @@ dim(df_for)
 length(unique(df_for$REALM))
 #7 Realms
 
-length(unique(df_for$ECO_NAME))
+length(unique(df_for_filt$ECO_NAME))
 #605 Ecoregions
 
 length(unique(df_for$BIOME_NAME))
@@ -84,7 +87,7 @@ hist(df_for$AGB)
 hist(df_for$AD)
 
 
-cor_raw_ecor <- df_for %>%
+cor_raw_ecor <- df_for_filt %>%
   group_by(ECO_NAME) %>%
   summarise(
     n = n(),
@@ -101,9 +104,8 @@ summary(cor_raw_ecor$n)
 cor_ecor_filt <- cor_raw_ecor %>%
   filter(!is.na(r), n >= 30, !is.na(ECO_NAME))
 
-ecoreg <- vect(file.path("03.Data/Ecoregions/Ecoregions2017.shp"))
-eco_df <- as.data.frame(ecoreg)
-unique(eco_df$ECO_ID)
+ecoreg <- read_sf(file.path("03.Data/in/Ecoregions/Ecoregions2017.shp"))
+
 
 ecoregions_map <- ecoreg %>%
   left_join(cor_ecor_filt, by = "ECO_NAME")
@@ -121,7 +123,7 @@ p_eco <- ggplot(ecoregions_map) +
     name = "Spearman r"
   ) +
   labs(
-    title = "by ecoregion",
+    title = "by ecoregion (380)",
     caption = "Grey = no data / insufficient observations"
   ) +
   theme_minimal() +
