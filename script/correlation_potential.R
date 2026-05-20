@@ -58,23 +58,23 @@ saveRDS(df_for, "03.Data/out/df_for.RDS")
 #df_for <- readRDS("03.Data/out/df_for.RDS")
 
 #filter df_for  keeping only filtered ecoregions
-df_for_filt <- df_for |> 
-  filter(ECO_NAME %in% eco_filt_pc$ECO_NAME)
+df_for_final <- df_for |> 
+  filter(ECO_NAME %in% eco_filt$ECO_NAME)
 
-dim(df_for)
-#1711559
+dim(df_for_final)
+#1704330
 
-length(unique(df_for$REALM))
+length(unique(df_for_final$REALM))
 #7 Realms
 
-length(unique(df_for_filt$ECO_NAME))
-#605 Ecoregions
+length(unique(df_for_final$ECO_NAME))
+#497 Ecoregions
 
-length(unique(df_for$BIOME_NAME))
-#15 Biomes
+length(unique(df_for_final$BIOME_NAME))
+#14 Biomes
 
-length(unique(df_for$ECO_BIOME_))
-#59
+length(unique(df_for_final$ECO_BIOME_))
+#53
 
 
 #df$REALM <- as.factor(df$REALM)
@@ -83,32 +83,28 @@ length(unique(df_for$ECO_BIOME_))
 
 
 ############## try corr
-hist(df_for$AGB)
-hist(df_for$AD)
+#hist(df_for$AGB)
+#hist(df_for$AD)
 
 
-cor_raw_ecor <- df_for_filt %>%
+cor_ecor <- df_for_final %>%
   group_by(ECO_NAME) %>%
   summarise(
     n = n(),
     r = cor(AGB, AD, method = "spearman"),
     .groups = "drop"
-  )
+  ) 
 
-cor_raw_ecor %>% 
-  filter(is.na(r)) %>% 
+cor_ecor <- cor_ecor |> filter(!is.na(r), n >= 10) |>
   arrange(n)
 
-summary(cor_raw_ecor$n)
+saveRDS(cor_ecor, "03.Data/out/df_cor_ecor.RDS")
 
-cor_ecor_filt <- cor_raw_ecor %>%
-  filter(!is.na(r), n >= 30, !is.na(ECO_NAME))
-
-ecoreg <- read_sf(file.path("03.Data/in/Ecoregions/Ecoregions2017.shp"))
+ecoregions <- read_sf(file.path("03.Data/in/Ecoregions/Ecoregions2017.shp"))
 
 
 ecoregions_map <- ecoreg %>%
-  left_join(cor_ecor_filt, by = "ECO_NAME")
+  left_join(cor_ecor, by = "ECO_NAME")
 
 
 p_eco <- ggplot(ecoregions_map) +
@@ -123,8 +119,7 @@ p_eco <- ggplot(ecoregions_map) +
     name = "Spearman r"
   ) +
   labs(
-    title = "by ecoregion (380)",
-    caption = "Grey = no data / insufficient observations"
+    title = "by ecoregion (491)",
   ) +
   theme_minimal() +
   theme(
