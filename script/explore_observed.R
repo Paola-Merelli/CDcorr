@@ -6,6 +6,7 @@ library(terra)
 library(rnaturalearth)
 library(rnaturalearthdata)
 
+
 unique(outdata$DB_BIBTEXKEY)
 outdata$YEAR <- as.integer(str_extract(outdata$DB_BIBTEXKEY, "\\d{4}"))
 
@@ -54,21 +55,22 @@ ggplot() +
   geom_point(data = for_data,
              aes(x = POINT_X, y = POINT_Y, color = period),  # <-- adatta i nomi delle colonne
              alpha = 0.7, size = 1.5) +
+  annotate("label",
+           x = -Inf, y = -Inf,
+           hjust = -0.05, vjust = -1,
+           label = paste0("Tot for: ", total, "\n",
+                          "NA: ", missing, " (", perc_missing, "%)\n",
+                          "Before 2007: ", n_before, " (", perc_before, "%)\n",
+                          "After: ", n_after, " (", perc_after, "%)"),
+           size = 3.5, fill = "white", color = "black") +
   scale_color_manual(values = c("Before 2007"    = "#E69F00",
                                 "2007 and after" = "#0072B2",
                                 "Unknown"        = "grey50")) +
-  labs(title = "Plot locations by period", color = "Period",
+  labs(title = " ", color = " ",
        x = NULL, y = NULL) +
   theme_minimal() +
   theme(legend.position = "bottom")
 
-#plot <- read.csv("03.Data/Sabatini_AlphaDiversity/3506_70_sPlot_Project11_data.csv")
-#head(plot)
 
-sf <- terra::vect((for_data$isforest = "for"), geom = c("POINT_X", "POINT_Y"), crs = "EPSG:4326")
-plot(sf)
-w <- vect("03.Data/in/world-administrative-boundaries.shp")
-plot(w)
-plot(sf, add= TRUE)
 
 
