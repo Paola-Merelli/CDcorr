@@ -9,12 +9,13 @@ ecoregions <- vect("03.Data/in/Ecoregions_new/Ecoregions2017.dbf")
 df <- as.data.frame(ecoregions)
 eco_rast <- terra::rasterize(ecoregions, forest_mask, field = "ECO_NAME")
 
+# Calculate the area of each pixel in hectares
 A_pix_ha <- cellSize(AD, unit= "ha", mask = FALSE)
-
+# calculate area for each ecoregion
 A_eco <- zonal(A_pix_ha, eco_rast, fun = "sum", na.rm = TRUE)
-
+# calculate area only of forested pixels
 A_for_ha <- A_pix_ha * forest_mask
-
+#calculate area of forested pixels for each ecoregion
 A_eco_for <- zonal(A_for_ha, eco_rast, fun = "sum", na.rm = TRUE)
 
 eco_for_df <- A_eco |>
@@ -26,15 +27,8 @@ eco_for_df <- A_eco |>
   arrange(desc(forest_perc))
 
 
-eco_filt_pc <- eco_for_df |>
-  filter(forest_perc >= 10)
-#380
-
-eco_filt_ha <- eco_for_df |>
-  filter(forest_ha >= 100000)
-#472
-
-eco_filt_pc_ha <- eco_for_df |>
-  filter(forest_ha >= 100000 & forest_perc >= 10)
+eco_filt <- eco_for_df |>
+  filter(forest_ha >= 100000 | forest_perc >= 10)
 #355
 
+saveRDS(eco_filt, "03.Data/out/df_ecor_filtered.RDS")
