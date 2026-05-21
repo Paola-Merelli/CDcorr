@@ -24,9 +24,11 @@ rgeo_ctr <- terra::crds(rgeo)
 AD_ex <- terra::extract(AD_map, rgeo_ctr)
 C_ex <- terra::extract(C_map, rgeo_ctr)
 
-df <- cbind(rgeo_ctr, AD_ex, C_ex) |> 
+df <- cbind(rgeo_ctr, AD_ex, C_ex, log(C_ex)) |> 
   as.data.frame() |>
-  setNames(c("x", "y", "AD", "AGB"))
+  setNames(c("x", "y", "AD", "AGB", "logAGB"))
+
+#df$logAGB <- log(df$AGB)
 
 ecoreg <- vect("03.Data/in/Ecoregions/Ecoregions2017.shp")
 fields <- c("ECO_NAME", "BIOME_NAME", "REALM", "ECO_BIOME_", "NNH_NAME")
@@ -45,10 +47,12 @@ eco_ex <- lapply(fields, function(f) {
 df_eco <- cbind(df, eco_ex)
 
 
-
 df_for <- df_eco |> 
   filter(!is.na(AD),
-         !is.na(AGB))
+         !is.na(AGB),
+         !is.infinite(AD),
+         !is.infinite(AGB),
+         !is.infinite(logAGB))
 
 range(df_for$AGB, na.rm = TRUE)
 range(df_for$AD, na.rm = TRUE)
@@ -58,6 +62,7 @@ saveRDS(df_for, "03.Data/out/df_for.RDS")
 #df_for <- readRDS("03.Data/out/df_for.RDS")
 
 #filter df_for  keeping only filtered ecoregions
+eco_filt <- readRDS("03.Data/out/df_ecor_filtered.RDS")
 df_for_final <- df_for |> 
   filter(ECO_NAME %in% eco_filt$ECO_NAME)
 
@@ -83,31 +88,36 @@ length(unique(df_for_final$ECO_BIOME_))
 
 
 ############## try corr
-#hist(df_for$AGB)
-#hist(df_for$AD)
-
+#hist(df_for_final$logAGB)
+#hist(df_for_final$AD)
 
 cor_ecor <- df_for_final %>%
   group_by(ECO_NAME) %>%
   summarise(
     n = n(),
-    r = cor(AGB, AD, method = "spearman"),
+    r = cor(AGB, AD, method = "pearson"),
     .groups = "drop"
   ) 
 
-cor_ecor <- cor_ecor |> filter(!is.na(r), n >= 10) |>
+cor_ecor_log <- df_for_final %>%
+  group_by(ECO_NAME) %>%
+  summarise(
+    r_log= cor(logAGB, AD, method = "pearson"),
+    .groups = "drop"
+  ) 
+cor_ecor$r_log <- cor_ecor_log$r_log
+
+df_ecorR <- cor_ecor |> filter(!is.na(r), !is.na(r_log), n >= 10) |>
   arrange(n)
 
-saveRDS(cor_ecor, "03.Data/out/df_cor_ecor.RDS")
+saveRDS(df_ecorR, "03.Data/out/df_ecorR.RDS")
 
-ecoregions <- read_sf(file.path("03.Data/in/Ecoregions/Ecoregions2017.shp"))
-
-
-ecoregions_map <- ecoreg %>%
-  left_join(cor_ecor, by = "ECO_NAME")
+ecoregions <- st_as_sf(ecoreg)
+ecoregions_map <- ecoregions %>%
+  left_join(df_ecorR, by = "ECO_NAME")
 
 
-p_eco <- ggplot(ecoregions_map) +
+ecorR_map <- ggplot(ecoregions_map) +
   geom_sf(aes(fill = r), color = NA) +
   scale_fill_gradient2(
     low = "blue",
@@ -116,10 +126,10 @@ p_eco <- ggplot(ecoregions_map) +
     midpoint = 0,
     limits = c(-1, 1),
     na.value = "grey85",
-    name = "Spearman r"
+    name = "Pearson's r"
   ) +
   labs(
-    title = "by ecoregion (491)",
+    title = "AD-AGB by ecoregion (491)",
   ) +
   theme_minimal() +
   theme(
@@ -128,8 +138,29 @@ p_eco <- ggplot(ecoregions_map) +
     axis.title = element_blank()
   ) +
   coord_sf(crs = "+proj=robin")
-p_eco
+ecorR_map
 
-
+ecorR_log_map <- ggplot(ecoregions_map) +
+  geom_sf(aes(fill = r_log), color = NA) +
+  scale_fill_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0,
+    limits = c(-1, 1),
+    na.value = "grey85",
+    name = "Pearson's r"
+  ) +
+  labs(
+    title = "AD-logAGB by ecoregion (491)",
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "transparent"),
+    axis.text = element_blank(),
+    axis.title = element_blank()
+  ) +
+  coord_sf(crs = "+proj=robin")
+ecorR_log_map
 
 
