@@ -29,6 +29,6 @@ eco_for_df <- A_eco |>
 
 eco_filt <- eco_for_df |>
   filter(forest_ha >= 100000 | forest_perc >= 10)
-#355
+#479
 
 saveRDS(eco_filt, "03.Data/out/df_ecor_filtered.RDS")
