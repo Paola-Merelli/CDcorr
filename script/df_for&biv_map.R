@@ -10,7 +10,7 @@ library(biscale)
 library(pals)
 
 # Sabatini Alpha Diversity
-AD_map <- terra::rast("03.Data/in/Sabatini_AlphaDiversity/w3_tile_sr1000_for.tif")
+AD_map <- terra::rast("03.Data/in/Sabatini_AlphaDiversity/w3_tile_sr1ha_for.tif")
 res(AD_map)
 plot(AD_map)
 
