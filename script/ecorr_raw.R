@@ -1,36 +1,36 @@
-#filter df_for  keeping only filtered ecoregions
+#creating df_for_final with only ecoregions that pass the filter and with AGB not 0 
 df_for <- readRDS("03.Data/out/df_for.RDS")
-eco_filt <- readRDS("03.Data/out/df_ecor_filtered_stronger.RDS")
+eco_filt <- readRDS("03.Data/out/df_ecor_filtered.RDS")
+
 
 df_for_final <- df_for |> 
   filter(ECO_NAME %in% eco_filt$ECO_NAME)
 
+saveRDS(df_for_final, "03.Data/out/df_for_final.RDS")
+
 dim(df_for_final)
-#1704330 con eco_filt
-#1700282 con eco_filt_stronger
+#1656740 (removed 47015 0)
 
 length(unique(df_for_final$REALM))
 #7 Realms
 
 length(unique(df_for_final$ECO_NAME))
-#497 Ecoregions
-#425 con eco_filt_stronger
+#472 Ecoregions
 
 length(unique(df_for_final$BIOME_NAME))
 #14 Biomes
 
 length(unique(df_for_final$ECO_BIOME_))
-#53
-#49 con eco_filt_stronger
+#52
 
 
-##### plot agb ad and logagb distribution after filtering eco
-
-ggplot(df_for_final, aes(x = AD)) +
+## plot agb ad and logagb distribution after filtering eco
+###################################
+SR_distr <- ggplot(df_for_final, aes(x = AD)) +
   geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.8) +
   labs(
-    x = "AD global (filter_eco)",
+    x = "SR global (filtered)",
     y = "Density"
   ) +
   theme_minimal(base_size = 13) +
@@ -45,50 +45,87 @@ ggplot(df_for_final, aes(x = AD)) +
            color = "gray30"
   ) 
 
+ggsave(
+  filename = "plots/ecorr_raw_q095/distr_SR_filtered.png",
+  plot = SR_distr,
+  width = 8,
+  height = 5,
+  dpi = 300)
 
+AGB_distr <- ggplot(df_for_final, aes(x = AGB)) +
+  geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.8) +
+  labs(
+    x = "AGB global (filtered - Mg/ha)",
+    y = "Density"
+  ) +
+  theme_minimal(base_size = 13) +
+  geom_vline(xintercept = median(df_for_final$AGB, na.rm = TRUE),
+             linetype = "dotted", color = "tomato", linewidth = 0.8) +
+  annotate("text",  x = Inf,  y = Inf,
+           label = paste0("n (pixels) = ", nrow(df_for_final), "\nmedian = ", 
+                          round(median(df_for_final$AGB, na.rm = TRUE), 2)),
+           hjust = 2.5,
+           vjust = 1.5,
+           size = 4,
+           color = "gray30"
+  ) 
+
+ggsave(
+  filename = "plots/ecorr_raw_q095/distr_AGB_filtered.png",
+  plot = AGB_distr,
+  width = 8,
+  height = 5,
+  dpi = 300)
+
+
+logAGB_distr <- ggplot(df_for_final, aes(x = logAGB)) +
+  geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.8) +
+  labs(
+    x = "log10(AGB) global (filtered)",
+    y = "Density"
+  ) +
+  theme_minimal(base_size = 13) +
+  geom_vline(xintercept = median(df_for_final$logAGB, na.rm = TRUE),
+             linetype = "dotted", color = "tomato", linewidth = 0.8) +
+  annotate("text",  x = Inf,  y = Inf,
+           label = paste0("n (pixels) = ", nrow(df_for_final), "\nmedian = ", 
+                          round(median(df_for_final$logAGB, na.rm = TRUE), 2)),
+           hjust = 3.0,
+           vjust = 1.5,
+           size = 4,
+           color = "gray30"
+  ) 
+
+ggsave(
+  filename = "plots/ecorr_raw_q095/distr_AGBlog_filtered.png",
+  plot = logAGB_distr,
+  width = 8,
+  height = 5,
+  dpi = 300)
 ############################################
-###########   correlation raw   ############
+
+
+#### correlation raw with log10(AGB +1)
 ############################################
 
 cor_ecor <- df_for_final |>
   group_by(ECO_NAME) |>
   summarise(
     n = n(),
-    r_spearman = round(cor(AGB, AD, method = "spearman"), digits=3),
+    r_raw = round(cor(logAGB, AD, method = "spearman"), digits=3),
     .groups = "drop"
   ) |>
   arrange(n)
 
-cor_ecor_log_p <- df_for_final %>%
-  group_by(ECO_NAME) %>%
-  summarise(
-    n = n(),
-    r_log= round(cor(logAGB, AD, method = "pearson"), digits=3),
-    .groups = "drop"
-  ) |>
+df_ecorR <- cor_ecor |> filter(!is.na(r_raw) & n > 50) |>
   arrange(n)
-
-cor_ecor_log_s <- df_for_final %>%
-  group_by(ECO_NAME) %>%
-  summarise(
-    n = n(),
-    r_log= round(cor(logAGB, AD, method = "spearman"), digits=3),
-    .groups = "drop"
-  ) |>
-  arrange(n)
-
-cor_ecor$r_log_spearman <- cor_ecor_log_s$r_log
-cor_ecor$r_log_pearson <- cor_ecor_log_p$r_log
-
-
-df_ecorR <- cor_ecor |> filter(!is.na(r_spearman)) |>
-  arrange(n)
-
-unique(df_ecorR$r_spearman == df_ecorR$r_log_spearman)
-#TRUE
+# 471 ecoregions. one was removed because after removing pixels with AGB = 0  it remained with n = 27 (Mediterranean dry woodlands and steppe)
+rm(cor_ecor)
 
 ########## plot ecoregions' dstribution ( r and r_log)
-r <- ggplot(df_ecorR, aes(x = r_spearman)) +
+r <- ggplot(df_ecorR, aes(x = r_raw)) +
   geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.8) +
   labs(
@@ -96,51 +133,40 @@ r <- ggplot(df_ecorR, aes(x = r_spearman)) +
     y = "Density"
   ) +
   theme_minimal(base_size = 13) +
-  geom_vline(xintercept = median(df_ecorR$r_spearman, na.rm = TRUE),
+  geom_vline(xintercept = median(df_ecorR$r_raw, na.rm = TRUE),
              linetype = "dotted", color = "tomato", linewidth = 0.8) +  
   annotate("text", x = Inf, y = Inf,
-           label = paste0("n = ", nrow(df_ecorR), "\nmedian = ", round(median(df_ecorR$r_spearman), 2)),
+           label = paste0("n = ", nrow(df_ecorR), "\nmedian = ", round(median(df_ecorR$r_raw), 2)),
            hjust = 1.1, vjust = 1.5, size = 4, color = "gray30")
 
-r_log <- ggplot(df_ecorR, aes(x = r_log_pearson)) +
-  geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.8) +
-  labs(
-    x = "Ecoregion's r (Pearson - logAGB)",
-    y = "Density"
-  ) +
-  theme_minimal(base_size = 13) +
-  geom_vline(xintercept = median(df_ecorR$r_log_pearson, na.rm = TRUE),
-             linetype = "dotted", color = "tomato", linewidth = 0.8) +  
-  annotate("text", x = Inf, y = Inf,
-           label = paste0("n = ", nrow(df_ecorR), "\nmedian = ", round(median(df_ecorR$r_log_pearson), 2)),
-           hjust = 1.1, vjust = 1.5, size = 4, color = "gray30")
-
-r + r_log
+ggsave(
+  filename = "plots/ecorr_raw_q095/distr_r_raw.png",
+  plot = r,
+  width = 8,
+  height = 5,
+  dpi = 300)
 
 
-##########################################
-##########   map r by ecoregion   ########
+### map r by ecoregion
 ##########################################
 
-ecoreg <- vect("03.Data/in/Ecoregions_new/Ecoregions2017.shp")
-ecoregions <- st_as_sf(ecoreg)
-ecoregions_map <- ecoregions %>%
+ecoregions <- vect("03.Data/in/Ecoregions_new/Ecoregions2017.shp")
+ecoregions_sf <- st_as_sf(ecoregions)
+ecoregions_map <- ecoregions_sf %>%
   left_join(df_ecorR, by = "ECO_NAME")
 
-
+# install.packages("scico")
+library(scico)
 ecorR_map <- ggplot(ecoregions_map) +
-  geom_sf(aes(fill = r_log_pearson), color = NA) +
-  scale_fill_gradient2(
-    low = "blue",
-    mid = "white",
-    high = "red",
-    midpoint = 0,
+  geom_sf(aes(fill = r_raw), color = NA) +
+  scale_fill_distiller(
+    palette = "RdBu",
+    direction = -1,
     limits = c(-1, 1),
     na.value = "grey85",
-    name = "pearson's r"
+    name = "r Spearman"
   ) +
-  labs(title = "AD-logAGB by ecoregion (425)",) +
+  labs(title = "Ecoregions' r - Spearman (all 471)",) +
   theme_minimal() +
   theme(panel.grid.major = element_line(color = "transparent"),
     axis.text = element_blank(),
@@ -148,10 +174,18 @@ ecorR_map <- ggplot(ecoregions_map) +
   coord_sf(crs = "+proj=robin")
 ecorR_map
 
-##########################################
+ggsave(
+  filename = "plots/ecorr_raw_q095/map_r_raw.png",
+  plot = ecorR_map,
+  width = 10,
+  height = 6,
+  dpi = 300
+)
 
 ##########################################
-######## scatterplot by ecoregion ########
+
+
+######## scatterplot by ecoregion 
 ##########################################
 
 
@@ -196,8 +230,8 @@ dev.off()
 ##########################################
 
 
-##########################################
-########  model with climate and lat #####
+
+########  creation df with ecor, r, climate and lat 
 ##########################################
 
 
@@ -215,12 +249,12 @@ bio_stk <- c(bioT, bioP, bioTs, bioPs)
 clim_means <- terra::extract(
   bio_stk,
   ecoregions,
-  fun = mean,
+  fun = median,
   na.rm = TRUE)
 
 clim_means$ECO_NAME <- ecoregions$ECO_NAME
 
-centr <- terra::centroids(ecoreg)
+centr <- terra::centroids(ecoregions)
 centr_xy <- terra::crds(centr)
 lat <- data.frame(centr_xy)$y
 clim_means$lat <- lat
@@ -228,7 +262,7 @@ clim_means$lat <- lat
 ddf <- merge(df_ecorR, clim_means, by.x = "ECO_NAME", by.y = "ECO_NAME", all.x = TRUE)
 
 #remove ID column
-ddf <- ddf[,-6]
+ddf <- ddf[,-4]
 
 ddf <- ddf|>
   mutate(hemi = case_when(
@@ -237,12 +271,12 @@ ddf <- ddf|>
   ))
 
 saveRDS(ddf, "03.Data/out/df_ecorR_raw.RDS")
-
+#############################
 
 
 ## geom density latitude
 #############
-ggplot(ddf, aes(x = lat)) +
+distr_lat <- ggplot(ddf, aes(x = lat)) +
   geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.8) +
   labs(
@@ -252,9 +286,11 @@ ggplot(ddf, aes(x = lat)) +
   theme_minimal(base_size = 13) +
   geom_vline(xintercept = median(ddf$lat, na.rm = TRUE),
              linetype = "dotted", color = "tomato", linewidth = 0.8) 
+
+
 ###########
 
-### geom density mean annual temperature
+### geom density median mean annual temperature
 ############
 ggplot(ddf, aes(x = bio1)) +
   geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
@@ -268,7 +304,7 @@ ggplot(ddf, aes(x = bio1)) +
              linetype = "dotted", color = "tomato", linewidth = 0.8) 
 ################
 
-### geom density temperature seasonality
+### geom density median temperature seasonality
 ##########
 ggplot(ddf, aes(x = bio4)) +
   geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
@@ -282,7 +318,7 @@ ggplot(ddf, aes(x = bio4)) +
              linetype = "dotted", color = "tomato", linewidth = 0.8) 
 #############
 
-## geom density annual precipitation
+## geom density median annual precipitation
 ##########
 ggplot(ddf, aes(x = bio12)) +
   geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
@@ -296,7 +332,7 @@ ggplot(ddf, aes(x = bio12)) +
              linetype = "dotted", color = "tomato", linewidth = 0.8) 
 ############
 
-## geom density precipitation seasonality
+## geom density meadian precipitation seasonality
 ###########
 ggplot(ddf, aes(x = bio15)) +
   geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
@@ -312,7 +348,7 @@ ggplot(ddf, aes(x = bio15)) +
 
 ###### scatterplot r vs latitude, global and dividing hemispheres
 ##############
-r_lat <- ggplot(ddf, aes(x = lat, y = r_spearman)) +
+r_lat <- ggplot(ddf, aes(x = abs(lat), y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   labs(
@@ -321,16 +357,8 @@ r_lat <- ggplot(ddf, aes(x = lat, y = r_spearman)) +
   ) +
   theme_minimal(base_size = 13)
 
-rlog_lat <- ggplot(ddf, aes(x = lat, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  labs(
-    x = "latitude",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
 
-r_latns <- ggplot(ddf, aes(x = lat, y = r_spearman)) +
+r_latns <- ggplot(ddf, aes(x = lat, y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   facet_wrap(~ hemi, scales = "free_x") +
@@ -340,23 +368,19 @@ r_latns <- ggplot(ddf, aes(x = lat, y = r_spearman)) +
   ) +
   theme_minimal(base_size = 13)
 
+r_lat / r_latns
 
-rlog_latns <- ggplot(ddf, aes(x = lat, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  facet_wrap(~ hemi, scales = "free_x") +
-  labs(
-    x = "latitude",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
-
-r_lat + rlog_lat + r_latns + rlog_latns
+ggsave(
+  filename = "plots/ecorr_raw_q095/scatt_r_lat.png",
+  plot = r_lat / r_latns,
+  width = 8,
+  height = 5,
+  dpi = 300)
 ##################
 
 ## mean annual temperature
 ################
-r_mat <- ggplot(ddf, aes(x = bio1, y = r_spearman)) +
+r_mat <- ggplot(ddf, aes(x = bio1, y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   labs(
@@ -365,16 +389,8 @@ r_mat <- ggplot(ddf, aes(x = bio1, y = r_spearman)) +
   ) +
   theme_minimal(base_size = 13)
 
-rlog_mat <- ggplot(ddf, aes(x = bio1, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  labs(
-    x = "Mean Annual Temperature",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
 
-r_matns <- ggplot(ddf, aes(x = bio1, y = r_spearman)) +
+r_matns <- ggplot(ddf, aes(x = bio1, y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   facet_wrap(~ hemi, scales = "free_x") +
@@ -385,22 +401,17 @@ r_matns <- ggplot(ddf, aes(x = bio1, y = r_spearman)) +
   theme_minimal(base_size = 13)
 
 
-rlog_matns <- ggplot(ddf, aes(x = bio1, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  facet_wrap(~ hemi, scales = "free_x") +
-  labs(
-    x = "Mean Annual Temperature",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
-
-r_mat + rlog_mat + r_matns + rlog_matns
+ggsave(
+  filename = "plots/ecorr_raw_q095/scatt_r_bio1.png",
+  plot = r_mat / r_matns,
+  width = 8,
+  height = 5,
+  dpi = 300)
 #####################
 
 ## Temperature seasonality
 ################
-r_ts <- ggplot(ddf, aes(x = bio4, y = r_spearman)) +
+r_ts <- ggplot(ddf, aes(x = bio4, y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   labs(
@@ -409,16 +420,8 @@ r_ts <- ggplot(ddf, aes(x = bio4, y = r_spearman)) +
   ) +
   theme_minimal(base_size = 13)
 
-rlog_ts <- ggplot(ddf, aes(x = bio4, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  labs(
-    x = "Temperature seasonality",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
 
-r_tsns <- ggplot(ddf, aes(x = bio4, y = r_spearman)) +
+r_tsns <- ggplot(ddf, aes(x = bio4, y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   facet_wrap(~ hemi, scales = "free_x") +
@@ -429,22 +432,18 @@ r_tsns <- ggplot(ddf, aes(x = bio4, y = r_spearman)) +
   theme_minimal(base_size = 13)
 
 
-rlog_tsns <- ggplot(ddf, aes(x = bio4, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  facet_wrap(~ hemi, scales = "free_x") +
-  labs(
-    x = "Temperature seasonality",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
+ggsave(
+  filename = "plots/ecorr_raw_q095/scatt_r_bio4.png",
+  plot = r_ts / r_tsns,
+  width = 8,
+  height = 5,
+  dpi = 300)
 
-r_ts + rlog_ts + r_tsns + rlog_tsns
 ################
 
 ## Annual precipitation
 ###############
-r_ap <- ggplot(ddf, aes(x = bio12, y = r_spearman)) +
+r_ap <- ggplot(ddf, aes(x = bio12, y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   labs(
@@ -453,16 +452,8 @@ r_ap <- ggplot(ddf, aes(x = bio12, y = r_spearman)) +
   ) +
   theme_minimal(base_size = 13)
 
-rlog_ap <- ggplot(ddf, aes(x = bio12, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  labs(
-    x = "Annual precipitation",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
 
-r_apns <- ggplot(ddf, aes(x = bio12, y = r_spearman)) +
+r_apns <- ggplot(ddf, aes(x = bio12, y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   facet_wrap(~ hemi, scales = "free_x") +
@@ -472,23 +463,18 @@ r_apns <- ggplot(ddf, aes(x = bio12, y = r_spearman)) +
   ) +
   theme_minimal(base_size = 13)
 
+ggsave(
+  filename = "plots/ecorr_raw_q095/scatt_r_bio12.png",
+  plot = r_ap / r_apns,
+  width = 8,
+  height = 5,
+  dpi = 300)
 
-rlog_apns <- ggplot(ddf, aes(x = bio12, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  facet_wrap(~ hemi, scales = "free_x") +
-  labs(
-    x = "Annual Precipitation",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
-
-r_ap + rlog_ap + r_apns + rlog_apns
 ####################
 
 ## Precipitation seasonality
 ##############
-r_ps <- ggplot(ddf, aes(x = bio15, y = r_spearman)) +
+r_ps <- ggplot(ddf, aes(x = bio15, y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   labs(
@@ -497,16 +483,8 @@ r_ps <- ggplot(ddf, aes(x = bio15, y = r_spearman)) +
   ) +
   theme_minimal(base_size = 13)
 
-rlog_ps <- ggplot(ddf, aes(x = bio15, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  labs(
-    x = "Precipitation seasonality",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
 
-r_psns <- ggplot(ddf, aes(x = bio15, y = r_spearman)) +
+r_psns <- ggplot(ddf, aes(x = bio15, y = r_raw)) +
   geom_point(color = "#4a90d9", alpha = 0.6) +
   geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
   facet_wrap(~ hemi, scales = "free_x") +
@@ -517,17 +495,13 @@ r_psns <- ggplot(ddf, aes(x = bio15, y = r_spearman)) +
   theme_minimal(base_size = 13)
 
 
-rlog_psns <- ggplot(ddf, aes(x = bio15, y = r_log_pearson)) +
-  geom_point(color = "#4a90d9", alpha = 0.6) +
-  geom_smooth(method = "gam", color = "#2c5f8a", se = TRUE) +
-  facet_wrap(~ hemi, scales = "free_x") +
-  labs(
-    x = "Precipitation seasonality",
-    y = "Pearson's r - logAGB"
-  ) +
-  theme_minimal(base_size = 13)
+ggsave(
+  filename = "plots/ecorr_raw_q095/scatt_r_bio15.png",
+  plot = r_ps / r_psns,
+  width = 8,
+  height = 5,
+  dpi = 300)
 
-r_ps + rlog_ps + r_psns + rlog_psns
 #########################
 
 lm <- lm(r_spearman ~ bio1 + bio12, data = ddf)
