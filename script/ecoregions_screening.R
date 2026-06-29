@@ -31,12 +31,15 @@ eco_for_df <- A_eco |>
   mutate(forest_perc = (forest_ha/total_ha) * 100) |>
   arrange(desc(forest_perc))
 
-
-eco_filt <- eco_for_df |>
+eco_filt_or <- eco_for_df |>
   filter(forest_ha >= 100000 | forest_perc >= 10)
 
-eco_filt_stronger <- eco_for_df |>
-  filter((forest_ha >= 100000 | forest_perc >= 10) & n_pix_for >= 100)
+eco_filt_and <- eco_for_df |>
+  filter(forest_ha >= 100000 & forest_perc >= 10)
 
-saveRDS(eco_filt, "03.Data/out/df_ecor_filtered.RDS")
-saveRDS(eco_filt_stronger, "03.Data/out/df_ecor_filtered_stronger.RDS")
+eco_diff <- anti_join(eco_filt_or, eco_filt_and, by = "ECO_NAME")
+
+eco_filt_controlled <- eco_for_df |>
+  filter((forest_ha >= 100000 | forest_perc >= 10) & n_pix_for >= 50)
+
+saveRDS(eco_filt_controlled, "03.Data/out/df_ecor_filtered.RDS")
