@@ -24,8 +24,8 @@ df_ecorR_raw <- readRDS("03.Data/out/df_ecorR_raw.RDS")
 df_r_trimmed <- df_ecorR_raw |>
   left_join(r_trimmed, by = "ECO_NAME") |>
   mutate(
-    delta_r = r_trimmed - r_raw,
-    abs_delta_r = abs(r_trimmed - r_raw),
+    delta_r = r_trimmed - rs_raw,
+    abs_delta_r = abs(r_trimmed - rs_raw),
     prc_removed = 100 * (1- n_trimmed/n)) |>
   mutate(
     delta_class = case_when(
@@ -77,6 +77,9 @@ ggsave(
   dpi = 300
 )
 ######################################
+################################
+
+
 
 #### map delta r by ecoregion (class, delta r, abs delta r)
 ###########################################
@@ -235,7 +238,7 @@ dev.off()
 
 ### plot ecoregions'r dstribution (r_raw vs r_trimmed)
 ##################
-r_raw <- ggplot(df_r_trimmed, aes(x = r_raw)) +
+r_raw <- ggplot(df_r_trimmed, aes(x = rs_raw)) +
   geom_density(fill = "#4a90d9", alpha = 0.4, color = "#2c5f8a", linewidth = 1) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.8) +
   labs(
@@ -243,10 +246,10 @@ r_raw <- ggplot(df_r_trimmed, aes(x = r_raw)) +
     y = "Density"
   ) +
   theme_minimal(base_size = 13) +
-  geom_vline(xintercept = median(df_r_trimmed$r_raw, na.rm = TRUE),
+  geom_vline(xintercept = median(df_r_trimmed$rs_raw, na.rm = TRUE),
              linetype = "dotted", color = "tomato", linewidth = 0.8) +  
   annotate("text", x = Inf, y = Inf,
-           label = paste0("n = ", nrow(df_r_trimmed), "\nmedian = ", round(median(df_r_trimmed$r_raw), 2)),
+           label = paste0("n = ", nrow(df_r_trimmed), "\nmedian = ", round(median(df_r_trimmed$rs_raw), 2)),
            hjust = 1.1, vjust = 1.5, size = 4, color = "gray30")
 
 r_trim <- ggplot(df_r_trimmed, aes(x = r_trimmed)) +
