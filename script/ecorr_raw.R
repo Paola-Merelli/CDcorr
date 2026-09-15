@@ -194,7 +194,7 @@ ggsave(
 
 
 ### aggiungi plot r_raw vs n_pixles x ecoregion and maybe map of ecoregions'r_raw
-
+# WHAT ABOUT all those diagnostic plots presentend to fms at the "presentazione brutta" meeting? they might be needed for supplementary
 
 
 ######## scatterplot by ecoregion 
